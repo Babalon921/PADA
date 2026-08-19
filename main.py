@@ -29,6 +29,31 @@ QDockWidget::title {{
     padding: 6px;
     border-left: 2px solid {ACCENT};
 }}
+QPlainTextEdit {{
+    background-color: #111111;
+    color: #e6e6e6;
+    border: 1px solid #3a3a3a;
+    font-family: "Consolas", "Menlo", monospace;
+}}
+QLineEdit {{
+    background-color: #242424;
+    color: #e6e6e6;
+    border: 1px solid #3a3a3a;
+    padding: 6px;
+    font-family: "Consolas", "Menlo", monospace;
+}}
+QLineEdit:focus {{
+    border: 1px solid {ACCENT};
+}}
+QPushButton {{
+    background-color: {ACCENT};
+    color: #ffffff;
+    border: none;
+    padding: 6px 16px;
+}}
+QPushButton:hover {{
+    background-color: #ff6369;
+}}
 """
 
 
