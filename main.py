@@ -87,8 +87,8 @@ class AgentWorker(QThread):
 class AgentWindow(QMainWindow):
     def __init__(self, workspace_path: str = "."):
         super().__init__()
-        self.setWindowTitle("Agent")
-        self.resize(1000, 650)
+        self.setWindowTitle("PADA - Python based-Agentic Data Analyst")
+        self.resize(1000, 400)
 
         self._build_terminal_panel()
         self._build_file_explorer_dock(workspace_path)
@@ -96,7 +96,7 @@ class AgentWindow(QMainWindow):
     def _build_terminal_panel(self) -> None:
         self.output = QTextEdit(self)
         self.output.setReadOnly(True)
-        self.append_agent("$ agent ready")
+        self.append_user("$ agent ready")
 
         self.input = QLineEdit(self)
         self.input.setPlaceholderText("Type a message...")
@@ -178,9 +178,11 @@ class AgentWindow(QMainWindow):
         if not self.output.document().isEmpty():
             cursor.insertBlock()
 
+        width = self.output.viewport().width()
         block_format = QTextBlockFormat()
-        block_format.setAlignment(Qt.AlignRight)
-        block_format.setLeftMargin(self.output.viewport().width() / 2)
+        block_format.setAlignment(Qt.AlignLeft)
+        block_format.setLeftMargin(width / 2)
+        block_format.setRightMargin(width * 0.08)
         cursor.setBlockFormat(block_format)
         self.output.setTextCursor(cursor)
 
@@ -193,6 +195,9 @@ class AgentWindow(QMainWindow):
         cursor.insertText(token, self._agent_char_format)
         self.output.setTextCursor(cursor)
         self.output.ensureCursorVisible()
+
+    def _build_atrifacts_(self) -> None:
+        return
 
 
 def main():
