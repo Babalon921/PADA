@@ -1,14 +1,20 @@
 import sys
 
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QApplication,
     QDockWidget,
     QFileSystemModel,
+    QHBoxLayout,
+    QLineEdit,
     QMainWindow,
+    QPlainTextEdit,
+    QPushButton,
     QTreeView,
+    QVBoxLayout,
     QWidget,
 )
-from PySide6.QtCore import Qt
+
 
 ACCENT = "#f00000"
 
@@ -60,10 +66,25 @@ QPushButton:hover {{
 class AgentWindow(QMainWindow):
     def __init__(self, workspace_path: str = "."):
         super().__init__()
-        self.setWindowTitle("Agent")
+        self.setWindowTitle("PADA - Python based-Agentic Data Analyst")
         self.resize(1000, 650)
 
-        #agent panel
+        ##self._build_term_panel()
+        self._build_file_explorer_()
+
+    def _build_term_panel(self) -> None:
+        self.output = QPlainTextEdit(self)
+        self.output.setReadOnly(True)
+        self.output.appendPlainText("@ Agent Online")
+
+
+        # Rest of code #
+
+        central = QWidget(self)
+        central.setLayout(layout)
+        self.setCentralWidget(central)
+
+    def _build_file_explorer_(self,workspace_path: str = ".") -> None:
         self.setCentralWidget(QWidget(self))
 
         self._model = QFileSystemModel(self)
@@ -79,8 +100,8 @@ class AgentWindow(QMainWindow):
 
 
 def main():
-    
-
+    #print("Enter Path:  ")
+    #user_input = input()
     app = QApplication(sys.argv)
     app.setStyleSheet(STYLESHEET)
     win = AgentWindow(".")
