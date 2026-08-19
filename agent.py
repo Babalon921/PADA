@@ -122,11 +122,6 @@ def audio_analyst():
     """Analyse Audio Files with Librosa"""
     return "404"  ## for the moment
 
-@tool
-def store_sql():
-    """Tool for storing data"""
-    return "404"
-
 @tool 
 def time():
     "Fetches Time and Date"
@@ -137,7 +132,7 @@ def time():
 agent = create_agent(
     "gpt-5-nano",
     checkpointer=checkpointer,
-    tools=[web_search, audio_analyst, store_sql,time],
+    tools=[web_search, audio_analyst,time],
     system_prompt=system_prompt
 )
 

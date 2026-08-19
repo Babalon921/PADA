@@ -14,6 +14,8 @@ from PySide6.QtWidgets import (
     QTreeView,
     QVBoxLayout,
     QWidget,
+    QListWidget,
+    QAbstractItemView,
 )
 
 from agent import stream_response
@@ -88,10 +90,11 @@ class AgentWindow(QMainWindow):
     def __init__(self, workspace_path: str = "."):
         super().__init__()
         self.setWindowTitle("PADA - Python based-Agentic Data Analyst")
-        self.resize(1000, 400)
+        self.resize(1000, 600)
 
         self._build_terminal_panel()
         self._build_file_explorer_dock(workspace_path)
+        self._build_artifacts_dock()
 
     def _build_terminal_panel(self) -> None:
         self.output = QTextEdit(self)
@@ -118,16 +121,26 @@ class AgentWindow(QMainWindow):
         self.setCentralWidget(central)
 
     def _build_file_explorer_dock(self, workspace_path: str) -> None:
-        model = QFileSystemModel(self)
-        model.setRootPath(workspace_path)
+        self.explorer_model = QFileSystemModel(self)
+        self.explorer_model.setRootPath(workspace_path)
 
-        tree = QTreeView(self)
-        tree.setModel(model)
-        tree.setRootIndex(model.index(workspace_path))
+        self.explorer_tree = QTreeView(self)
+        self.explorer_tree.setModel(self.explorer_model)
+        self.explorer_tree.setRootIndex(self.explorer_model.index(workspace_path))
+        self.explorer_tree.setSelectionMode(QAbstractItemView.ExtendedSelection)
+
+        analyse_btn = QPushButton("Analyse", self)
+        analyse_btn.clicked.connect(self._on_analyse_clicked)
+
+        container = QWidget(self)
+        layout = QVBoxLayout(container)
+        layout.addWidget(self.explorer_tree)
+        layout.addWidget(analyse_btn)
 
         dock = QDockWidget("Workspace", self)
-        dock.setWidget(tree)
+        dock.setWidget(container)
         self.addDockWidget(Qt.RightDockWidgetArea, dock)
+        self._explorer_dock = dock
 
     def handle_input(self) -> None:
         text = self.input.text().strip()
@@ -196,8 +209,24 @@ class AgentWindow(QMainWindow):
         self.output.setTextCursor(cursor)
         self.output.ensureCursorVisible()
 
-    def _build_atrifacts_(self) -> None:
-        return
+    def _build_artifacts_dock(self) -> None:
+        self.artifacts = QListWidget(self)
+
+        dock = QDockWidget("Data View", self)
+        dock.setWidget(self.artifacts)
+        self.addDockWidget(Qt.RightDockWidgetArea, dock)
+        self.splitDockWidget(self._explorer_dock, dock, Qt.Vertical)
+
+    def _on_analyse_clicked(self) -> None:
+        paths = [
+            self.explorer_model.filePath(index)
+            for index in self.explorer_tree.selectionModel().selectedRows()
+        ]
+        self.analyse_files(paths)
+
+    def analyse_files(self, paths: list[str]) -> None:
+        self.append_user(str(paths))
+        pass
 
 
 def main():
