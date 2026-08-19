@@ -67,36 +67,55 @@ class AgentWindow(QMainWindow):
     def __init__(self, workspace_path: str = "."):
         super().__init__()
         self.setWindowTitle("PADA - Python based-Agentic Data Analyst")
-        self.resize(1000, 650)
+        self.resize(1000, 400)
 
-        ##self._build_term_panel()
+        self._build_term_panel()
         self._build_file_explorer_()
 
     def _build_term_panel(self) -> None:
         self.output = QPlainTextEdit(self)
         self.output.setReadOnly(True)
-        self.output.appendPlainText("@ Agent Online")
+        self.output.appendPlainText("$ agent ready")
 
+        self.input = QLineEdit(self)
+        self.input.setPlaceholderText("Type a message...")
+        self.input.returnPressed.connect(self.handle_input)
 
-        # Rest of code #
+        send_btn = QPushButton("Send", self)
+        send_btn.clicked.connect(self.handle_input)
+
+        input_row = QHBoxLayout()
+        input_row.addWidget(self.input)
+        input_row.addWidget(send_btn)
+
+        layout = QVBoxLayout()
+        layout.addWidget(self.output)
+        layout.addLayout(input_row)
 
         central = QWidget(self)
         central.setLayout(layout)
         self.setCentralWidget(central)
 
     def _build_file_explorer_(self,workspace_path: str = ".") -> None:
-        self.setCentralWidget(QWidget(self))
+        model = QFileSystemModel(self)
+        model.setRootPath(workspace_path)
 
-        self._model = QFileSystemModel(self)
-        self._model.setRootPath(workspace_path)
+        #self._model = QFileSystemModel(self)
+        #self._model.setRootPath(workspace_path)
 
         tree = QTreeView(self)
-        tree.setModel(self._model)
-        tree.setRootIndex(self._model.index(workspace_path))
+        tree.setModel(model)
+        tree.setRootIndex(model.index(workspace_path))
 
         dock = QDockWidget("Workspace", self)
         dock.setWidget(tree)
         self.addDockWidget(Qt.RightDockWidgetArea, dock)
+
+    def artifact_view(self) -> None:
+        return
+
+    def handle_input(self) -> None:
+        return
 
 
 def main():
