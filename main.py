@@ -1,9 +1,7 @@
 import sys
 
-
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QThread, Signal
 from PySide6.QtGui import QColor, QTextBlockFormat, QTextCharFormat, QTextCursor
-from agent import respond
 from PySide6.QtWidgets import (
     QApplication,
     QDockWidget,
@@ -11,16 +9,16 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLineEdit,
     QMainWindow,
-    QPlainTextEdit,
     QPushButton,
+    QTextEdit,
     QTreeView,
     QVBoxLayout,
     QWidget,
-    QTextEdit,
 )
 
+from agent import stream_response
 
-ACCENT = "#f00000"
+ACCENT = "#FF0000"
 
 STYLESHEET = f"""
 QMainWindow, QWidget {{
@@ -39,7 +37,7 @@ QDockWidget::title {{
     padding: 6px;
     border-left: 2px solid {ACCENT};
 }}
-QPlainTextEdit {{
+QTextEdit {{
     background-color: #111111;
     color: #e6e6e6;
     border: 1px solid #3a3a3a;
@@ -67,17 +65,36 @@ QPushButton:hover {{
 """
 
 
+class AgentWorker(QThread):
+    token_received = Signal(str)
+    finished_ok = Signal()
+    failed = Signal(str)
+
+    def __init__(self, message: str, parent=None):
+        super().__init__(parent)
+        self._message = message
+
+    def run(self) -> None:
+        try:
+            for token in stream_response(self._message):
+                self.token_received.emit(token)
+        except Exception as exc:
+            self.failed.emit(str(exc))
+        finally:
+            self.finished_ok.emit()
+
+
 class AgentWindow(QMainWindow):
     def __init__(self, workspace_path: str = "."):
         super().__init__()
-        self.setWindowTitle("PADA - Python based-Agentic Data Analyst")
-        self.resize(1000, 400)
+        self.setWindowTitle("Agent")
+        self.resize(1000, 650)
 
-        self._build_term_panel()
-        self._build_file_explorer_()
+        self._build_terminal_panel()
+        self._build_file_explorer_dock(workspace_path)
 
-    def _build_term_panel(self) -> None:
-        self.output = QTextEdit(self)  
+    def _build_terminal_panel(self) -> None:
+        self.output = QTextEdit(self)
         self.output.setReadOnly(True)
         self.append_agent("$ agent ready")
 
@@ -100,12 +117,9 @@ class AgentWindow(QMainWindow):
         central.setLayout(layout)
         self.setCentralWidget(central)
 
-    def _build_file_explorer_(self,workspace_path: str = ".") -> None:
+    def _build_file_explorer_dock(self, workspace_path: str) -> None:
         model = QFileSystemModel(self)
         model.setRootPath(workspace_path)
-
-        #self._model = QFileSystemModel(self)
-        #self._model.setRootPath(workspace_path)
 
         tree = QTreeView(self)
         tree.setModel(model)
@@ -115,56 +129,73 @@ class AgentWindow(QMainWindow):
         dock.setWidget(tree)
         self.addDockWidget(Qt.RightDockWidgetArea, dock)
 
-    def artifact_view(self) -> None:
-        return
-
-    def agent_reponse(self) -> None:
-        self.append_agent("Hello")
-
     def handle_input(self) -> None:
         text = self.input.text().strip()
         if not text:
             return
         self.append_user(text)
         self.input.clear()
+        self.input.setEnabled(False)
 
-        relpy = respond(text)
-        self.append_agent(relpy)
+        self._begin_agent_message()
+        self._worker = AgentWorker(text, self)
+        self._worker.token_received.connect(self._append_agent_token)
+        self._worker.failed.connect(self._on_agent_failed)
+        self._worker.finished_ok.connect(self._on_agent_finished)
+        self._worker.start()
+
+    def _on_agent_failed(self, error: str) -> None:
+        self._append_agent_token(f"[error] {error}")
+
+    def _on_agent_finished(self) -> None:
+        self.input.setEnabled(True)
+        self.input.setFocus()
 
     def append_user(self, text: str) -> None:
-        self._append(text, align=Qt.AlignLeft)
-
-    def append_agent(self, text: str) -> None:
-        self._append(text, align=Qt.AlignRight, color="#ffffff", half_width=True)
-
-    def _append(
-        self,
-        text: str,
-        align: Qt.AlignmentFlag,
-        color: str = "#e6e6e6",
-        half_width: bool = False,
-    ) -> None:
         cursor = self.output.textCursor()
         cursor.movePosition(QTextCursor.End)
         if not self.output.document().isEmpty():
             cursor.insertBlock()
 
         block_format = QTextBlockFormat()
-        block_format.setAlignment(align)
-        if half_width:
-            block_format.setLeftMargin(self.output.viewport().width() / 2)
+        block_format.setAlignment(Qt.AlignLeft)
         cursor.setBlockFormat(block_format)
 
         char_format = QTextCharFormat()
-        char_format.setForeground(QColor(color))
+        char_format.setForeground(QColor("#e6e6e6"))
         cursor.insertText(text, char_format)
 
         self.output.setTextCursor(cursor)
         self.output.ensureCursorVisible()
 
+    def append_agent(self, text: str) -> None:
+        self._begin_agent_message()
+        self._append_agent_token(text)
+
+    def _begin_agent_message(self) -> None:
+        cursor = self.output.textCursor()
+        cursor.movePosition(QTextCursor.End)
+        if not self.output.document().isEmpty():
+            cursor.insertBlock()
+
+        block_format = QTextBlockFormat()
+        block_format.setAlignment(Qt.AlignRight)
+        block_format.setLeftMargin(self.output.viewport().width() / 2)
+        cursor.setBlockFormat(block_format)
+        self.output.setTextCursor(cursor)
+
+        self._agent_char_format = QTextCharFormat()
+        self._agent_char_format.setForeground(QColor(ACCENT))
+
+    def _append_agent_token(self, token: str) -> None:
+        cursor = self.output.textCursor()
+        cursor.movePosition(QTextCursor.End)
+        cursor.insertText(token, self._agent_char_format)
+        self.output.setTextCursor(cursor)
+        self.output.ensureCursorVisible()
+
+
 def main():
-    #print("Enter Path:  ")
-    #user_input = input()
     app = QApplication(sys.argv)
     app.setStyleSheet(STYLESHEET)
     win = AgentWindow(".")

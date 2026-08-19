@@ -48,16 +48,13 @@ agent = create_agent(
 _thread_id = str(uuid.uuid4())
 
 
-def respond(message: str) -> str:
+def stream_response(message: str):
     config = {"configurable": {"thread_id": _thread_id}}
 
-    reply = ""
     for token, metadata in agent.stream(
         {"messages": [HumanMessage(content=message)]},
         config,
         stream_mode="messages",
     ):
         if token.content:
-            reply += token.content
-
-    return reply
+            yield token.content
