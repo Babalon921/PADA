@@ -3,6 +3,7 @@ import sys
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor, QTextBlockFormat, QTextCharFormat, QTextCursor
+from agent import respond
 from PySide6.QtWidgets import (
     QApplication,
     QDockWidget,
@@ -126,7 +127,9 @@ class AgentWindow(QMainWindow):
             return
         self.append_user(text)
         self.input.clear()
-        self.agent_reponse()
+
+        relpy = respond(text)
+        self.append_agent(relpy)
 
     def append_user(self, text: str) -> None:
         self._append(text, align=Qt.AlignLeft)
