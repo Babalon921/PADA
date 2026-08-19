@@ -11,6 +11,8 @@ from langchain.agents import create_agent
 from langchain.tools import tool
 from tavily import TavilyClient
 
+global a_data, a_sr
+
 system_prompt = """
 # PADA — System Prompt
 
@@ -117,11 +119,6 @@ def web_search(query: str) -> Dict[str, Any]:
     """Search the web for information"""
     return tavily_client.search(query)
 
-@tool
-def audio_analyst():
-    """Analyse Audio Files with Librosa"""
-    return "404"  ## for the moment
-
 @tool 
 def time():
     "Fetches Time and Date"
@@ -132,7 +129,7 @@ def time():
 agent = create_agent(
     "gpt-5-nano",
     checkpointer=checkpointer,
-    tools=[web_search, audio_analyst,time],
+    tools=[web_search,time],
     system_prompt=system_prompt
 )
 

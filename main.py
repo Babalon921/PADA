@@ -1,5 +1,6 @@
 import sys
-
+import librosa
+import numpy as np
 from PySide6.QtCore import Qt, QThread, Signal
 from PySide6.QtGui import QColor, QTextBlockFormat, QTextCharFormat, QTextCursor
 from PySide6.QtWidgets import (
@@ -65,7 +66,43 @@ QPushButton:hover {{
     background-color: #ff6369;
 }}
 """
+def audio_analyst(path):
 
+      #y = samples sr = hz
+      y, sr = librosa.load(path, sr=None)
+      sample_ref = [y,sr]
+
+      tempo, bf = librosa.beat.beat_track(y=y, sr=sr)
+      bt = librosa.frames_to_time(bf, sr=sr)
+      bpm_ref = [tempo,bt]
+
+      mfccs = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=13)
+      mfccs = [mfccs]
+
+      S_db = librosa.amplitude_to_db(np.abs(librosa.stft(y)), ref=np.max)
+      S_db = [S_db]
+
+      S_C = librosa.feature.spectral_centroid(y=y, sr=sr)
+      S_C = [S_C]
+
+      ZCR = librosa.feature.zero_crossing_rate(y) 
+      ZCR = [ZCR]
+
+      return sample_ref + bpm_ref + mfccs + S_db + S_C + ZCR
+
+class AnalysisWorker(QThread):
+    result_ready = Signal(str, object)
+    finished_ok = Signal()
+
+    def __init__(self, paths: list[str], parent=None):
+        super().__init__(parent)
+        self._paths = paths
+
+    def run(self) -> None:
+        for path in self._paths:
+            result = audio_analyst(path)
+            self.result_ready.emit(path, result)
+        self.finished_ok.emit()
 
 class AgentWorker(QThread):
     token_received = Signal(str)
@@ -225,8 +262,13 @@ class AgentWindow(QMainWindow):
         self.analyse_files(paths)
 
     def analyse_files(self, paths: list[str]) -> None:
-        self.append_user(str(paths))
-        pass
+        self._analysis_worker = AnalysisWorker(paths, self)
+        self._analysis_worker.result_ready.connect(self._on_analysis_result)
+        self._analysis_worker.start()
+
+    def _on_analysis_result(self, path: str, result) -> None:
+        print(path, result)
+            
 
 
 def main():
