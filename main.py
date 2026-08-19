@@ -115,8 +115,13 @@ class AgentWindow(QMainWindow):
         return
 
     def handle_input(self) -> None:
-        return
+        text = self.input.text().strip()
+        if not text:
+            return "-_-"
+        self.output.appendPlainText(f">>> {text}")
+        self.input.clear()
 
+        ## agentic code here
 
 def main():
     #print("Enter Path:  ")
