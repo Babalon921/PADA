@@ -1,6 +1,8 @@
 import sys
 
+
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QColor, QTextBlockFormat, QTextCharFormat, QTextCursor
 from PySide6.QtWidgets import (
     QApplication,
     QDockWidget,
@@ -13,6 +15,7 @@ from PySide6.QtWidgets import (
     QTreeView,
     QVBoxLayout,
     QWidget,
+    QTextEdit,
 )
 
 
@@ -73,9 +76,9 @@ class AgentWindow(QMainWindow):
         self._build_file_explorer_()
 
     def _build_term_panel(self) -> None:
-        self.output = QPlainTextEdit(self)
+        self.output = QTextEdit(self)  
         self.output.setReadOnly(True)
-        self.output.appendPlainText("$ agent ready")
+        self.append_agent("$ agent ready")
 
         self.input = QLineEdit(self)
         self.input.setPlaceholderText("Type a message...")
@@ -114,14 +117,47 @@ class AgentWindow(QMainWindow):
     def artifact_view(self) -> None:
         return
 
+    def agent_reponse(self) -> None:
+        self.append_agent("Hello")
+
     def handle_input(self) -> None:
         text = self.input.text().strip()
         if not text:
-            return "-_-"
-        self.output.appendPlainText(f">>> {text}")
+            return
+        self.append_user(text)
         self.input.clear()
+        self.agent_reponse()
 
-        ## agentic code here
+    def append_user(self, text: str) -> None:
+        self._append(text, align=Qt.AlignLeft)
+
+    def append_agent(self, text: str) -> None:
+        self._append(text, align=Qt.AlignRight, color="#ffffff", half_width=True)
+
+    def _append(
+        self,
+        text: str,
+        align: Qt.AlignmentFlag,
+        color: str = "#e6e6e6",
+        half_width: bool = False,
+    ) -> None:
+        cursor = self.output.textCursor()
+        cursor.movePosition(QTextCursor.End)
+        if not self.output.document().isEmpty():
+            cursor.insertBlock()
+
+        block_format = QTextBlockFormat()
+        block_format.setAlignment(align)
+        if half_width:
+            block_format.setLeftMargin(self.output.viewport().width() / 2)
+        cursor.setBlockFormat(block_format)
+
+        char_format = QTextCharFormat()
+        char_format.setForeground(QColor(color))
+        cursor.insertText(text, char_format)
+
+        self.output.setTextCursor(cursor)
+        self.output.ensureCursorVisible()
 
 def main():
     #print("Enter Path:  ")
