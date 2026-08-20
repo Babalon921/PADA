@@ -1,4 +1,8 @@
 __pycache__
 .env
+
 chat_memory.db
 analysis_results.db
+
+chat_memory.db-shm
+chat_memory.db-wal
