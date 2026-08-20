@@ -21,9 +21,12 @@ from PySide6.QtWidgets import (
     QWidget,
     QListWidget,
     QAbstractItemView,
+    QDialog,
+    QListWidgetItem,
 )
 
 from agent import stream_response
+from audio import audio_analyst
 
 ACCENT = "#FF0000"
 
@@ -75,29 +78,6 @@ QPushButton:disabled {{
     color: #7a7a7a;
 }}
 """
-def audio_analyst(path):
-
-      #y = samples sr = hz
-      y, sr = librosa.load(path, sr=None)
-      sample_ref = ["Samples", y,"Sample Rate",sr]
-
-      tempo, bf = librosa.beat.beat_track(y=y, sr=sr)
-      bt = librosa.frames_to_time(bf, sr=sr)
-      bpm_ref = ["BPM",tempo,"Beat Time",bt]
-
-      mfccs = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=13)
-      mfccs = ["Mfccs",mfccs]
-
-      S_db = librosa.amplitude_to_db(np.abs(librosa.stft(y)), ref=np.max)
-      S_db = ["STFT", S_db]
-
-      S_C = librosa.feature.spectral_centroid(y=y, sr=sr)
-      S_C = ["Spectral Centroid", S_C]
-
-      ZCR = librosa.feature.zero_crossing_rate(y) 
-      ZCR = ["Zero Cross Rate", ZCR]
-
-      return sample_ref + bpm_ref + mfccs + S_db + S_C + ZCR
 
 class AnalysisWorker(QThread):
     result_ready = Signal(str, object)
@@ -279,6 +259,7 @@ class AgentWindow(QMainWindow):
 
     def _build_artifacts_dock(self) -> None:
         self.artifacts = QListWidget(self)
+        self.artifacts.itemClicked.connect(self._on_artifact_selected)
         self._load_artifacts()
 
         dock = QDockWidget("Data View", self)
@@ -286,13 +267,18 @@ class AgentWindow(QMainWindow):
         self.addDockWidget(Qt.RightDockWidgetArea, dock)
         self.splitDockWidget(self._explorer_dock, dock, Qt.Vertical)
 
+    def _add_artifact_item(self, path: str) -> None:
+        item = QListWidgetItem(os.path.basename(path))
+        item.setData(Qt.UserRole, path)
+        self.artifacts.addItem(item)
+
     def _load_artifacts(self) -> None:
         self.artifacts.clear()
         rows = self._analysis_db.execute(
             "SELECT path FROM audio_analysis ORDER BY id"
         ).fetchall()
         for (path,) in rows:
-            self.artifacts.addItem(os.path.basename(path))
+            self._add_artifact_item(path)
 
     def _on_analyse_clicked(self) -> None:
         paths = [
@@ -302,6 +288,40 @@ class AgentWindow(QMainWindow):
         self.analyse_btn.setEnabled(False)
         self.analyse_files(paths)
 
+    def _on_artifact_selected(self, item: QListWidgetItem) -> None:
+        path = item.data(Qt.UserRole)
+        row = self._analysis_db.execute(
+            "SELECT result FROM audio_analysis WHERE path = ? ORDER BY id DESC LIMIT 1",
+            (path,),
+        ).fetchone()
+        if row is None:
+            return
+        result = pickle.loads(row[0])
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle(os.path.basename(path))
+        dialog.resize(500, 400)
+
+        view = QTextEdit(dialog)
+        view.setReadOnly(True)
+        view.setPlainText(self._format_result(result))
+
+        layout = QVBoxLayout(dialog)
+        layout.addWidget(view)
+
+        self._open_dialogs = getattr(self, "_open_dialogs", [])
+        self._open_dialogs.append(dialog)
+        dialog.show()
+
+    def _format_result(self, result) -> str:
+        lines = []
+        for label, value in zip(result[::2], result[1::2]):
+            if isinstance(value, np.ndarray):
+                lines.append(f"{label}: array shape={value.shape} dtype={value.dtype}")
+            else:
+                lines.append(f"{label}: {value}")
+        return "\n".join(lines)
+
     def analyse_files(self, paths: list[str]) -> None:
         self._analysis_worker = AnalysisWorker(paths, self)
         self._analysis_worker.result_ready.connect(self._on_analysis_result)
@@ -310,7 +330,7 @@ class AgentWindow(QMainWindow):
 
     def _on_analysis_result(self, path: str, result) -> None:
         self._save_analysis_result(path, result)
-        self.artifacts.addItem(os.path.basename(path))
+        self._add_artifact_item(path)
 
     def _on_analysis_finished(self) -> None:
         self.analyse_btn.setEnabled(True)
