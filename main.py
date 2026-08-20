@@ -1,6 +1,9 @@
 import sys
 import librosa
 import numpy as np
+import pickle
+import sqlite3
+
 from PySide6.QtCore import Qt, QThread, Signal
 from PySide6.QtGui import QColor, QTextBlockFormat, QTextCharFormat, QTextCursor
 from PySide6.QtWidgets import (
@@ -64,29 +67,34 @@ QPushButton {{
 }}
 QPushButton:hover {{
     background-color: #ff6369;
+
+}}
+QPushButton:disabled {{
+    background-color: #3a3a3a;
+    color: #7a7a7a;
 }}
 """
 def audio_analyst(path):
 
       #y = samples sr = hz
       y, sr = librosa.load(path, sr=None)
-      sample_ref = [y,sr]
+      sample_ref = ["Samples", y,"Sample Rate",sr]
 
       tempo, bf = librosa.beat.beat_track(y=y, sr=sr)
       bt = librosa.frames_to_time(bf, sr=sr)
-      bpm_ref = [tempo,bt]
+      bpm_ref = ["BPM",tempo,"Beat Time",bt]
 
       mfccs = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=13)
-      mfccs = [mfccs]
+      mfccs = ["Mfccs",mfccs]
 
       S_db = librosa.amplitude_to_db(np.abs(librosa.stft(y)), ref=np.max)
-      S_db = [S_db]
+      S_db = ["STFT", S_db]
 
       S_C = librosa.feature.spectral_centroid(y=y, sr=sr)
-      S_C = [S_C]
+      S_C = ["Spectral Centroid", S_C]
 
       ZCR = librosa.feature.zero_crossing_rate(y) 
-      ZCR = [ZCR]
+      ZCR = ["Zero Cross Rate", ZCR]
 
       return sample_ref + bpm_ref + mfccs + S_db + S_C + ZCR
 
@@ -129,6 +137,7 @@ class AgentWindow(QMainWindow):
         self.setWindowTitle("PADA - Python based-Agentic Data Analyst")
         self.resize(1000, 600)
 
+        self._init_analysis_db()
         self._build_terminal_panel()
         self._build_file_explorer_dock(workspace_path)
         self._build_artifacts_dock()
@@ -160,25 +169,46 @@ class AgentWindow(QMainWindow):
     def _build_file_explorer_dock(self, workspace_path: str) -> None:
         self.explorer_model = QFileSystemModel(self)
         self.explorer_model.setRootPath(workspace_path)
-
+        self.explorer_model.setNameFilters(["*.wav", "*.mp3", "*.flac"])
         self.explorer_tree = QTreeView(self)
         self.explorer_tree.setModel(self.explorer_model)
         self.explorer_tree.setRootIndex(self.explorer_model.index(workspace_path))
         self.explorer_tree.setSelectionMode(QAbstractItemView.ExtendedSelection)
 
-        analyse_btn = QPushButton("Analyse", self)
-        analyse_btn.clicked.connect(self._on_analyse_clicked)
+
+        self.analyse_btn = QPushButton("Analyse", self)
+        self.analyse_btn.clicked.connect(self._on_analyse_clicked)
 
         container = QWidget(self)
         layout = QVBoxLayout(container)
         layout.addWidget(self.explorer_tree)
-        layout.addWidget(analyse_btn)
-
+        layout.addWidget(self.analyse_btn)
+        
         dock = QDockWidget("Workspace", self)
         dock.setWidget(container)
         self.addDockWidget(Qt.RightDockWidgetArea, dock)
         self._explorer_dock = dock
+        
+    def _init_analysis_db(self) -> None:
+        self._analysis_db = sqlite3.connect("analysis_results.db")
+        self._analysis_db.execute(
+            """
+            CREATE TABLE IF NOT EXISTS audio_analysis (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                path TEXT NOT NULL,
+                result BLOB NOT NULL
+            )
+            """
+        )
+        self._analysis_db.commit()
 
+    def _save_analysis_result(self, path: str, result) -> None:
+        self._analysis_db.execute(
+            "INSERT INTO audio_analysis (path, result) VALUES (?, ?)",
+            (path, pickle.dumps(result)),
+        )
+        self._analysis_db.commit()
+        
     def handle_input(self) -> None:
         text = self.input.text().strip()
         if not text:
@@ -259,15 +289,21 @@ class AgentWindow(QMainWindow):
             self.explorer_model.filePath(index)
             for index in self.explorer_tree.selectionModel().selectedRows()
         ]
+        self.analyse_btn.setEnabled(False)
         self.analyse_files(paths)
 
     def analyse_files(self, paths: list[str]) -> None:
         self._analysis_worker = AnalysisWorker(paths, self)
         self._analysis_worker.result_ready.connect(self._on_analysis_result)
+        self._analysis_worker.finished_ok.connect(self._on_analysis_finished)
         self._analysis_worker.start()
 
     def _on_analysis_result(self, path: str, result) -> None:
+        self._save_analysis_result(path, result)
         print(path, result)
+
+    def _on_analysis_finished(self) -> None:
+        self.analyse_btn.setEnabled(True)
             
 
 
