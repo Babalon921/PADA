@@ -1,3 +1,4 @@
+import os
 import sys
 import librosa
 import numpy as np
@@ -183,7 +184,7 @@ class AgentWindow(QMainWindow):
         layout = QVBoxLayout(container)
         layout.addWidget(self.explorer_tree)
         layout.addWidget(self.analyse_btn)
-        
+
         dock = QDockWidget("Workspace", self)
         dock.setWidget(container)
         self.addDockWidget(Qt.RightDockWidgetArea, dock)
@@ -278,11 +279,20 @@ class AgentWindow(QMainWindow):
 
     def _build_artifacts_dock(self) -> None:
         self.artifacts = QListWidget(self)
+        self._load_artifacts()
 
         dock = QDockWidget("Data View", self)
         dock.setWidget(self.artifacts)
         self.addDockWidget(Qt.RightDockWidgetArea, dock)
         self.splitDockWidget(self._explorer_dock, dock, Qt.Vertical)
+
+    def _load_artifacts(self) -> None:
+        self.artifacts.clear()
+        rows = self._analysis_db.execute(
+            "SELECT path FROM audio_analysis ORDER BY id"
+        ).fetchall()
+        for (path,) in rows:
+            self.artifacts.addItem(os.path.basename(path))
 
     def _on_analyse_clicked(self) -> None:
         paths = [
@@ -300,7 +310,7 @@ class AgentWindow(QMainWindow):
 
     def _on_analysis_result(self, path: str, result) -> None:
         self._save_analysis_result(path, result)
-        print(path, result)
+        self.artifacts.addItem(os.path.basename(path))
 
     def _on_analysis_finished(self) -> None:
         self.analyse_btn.setEnabled(True)
