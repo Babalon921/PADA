@@ -3,6 +3,8 @@ import sys
 
 import pickle
 import sqlite3
+import numpy as np
+
 
 from PySide6.QtCore import Qt, QThread, Signal
 from PySide6.QtGui import QColor, QTextBlockFormat, QTextCharFormat, QTextCursor
