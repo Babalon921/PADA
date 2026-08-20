@@ -4,6 +4,7 @@
 
 <p align="center">Agentic Audio Analyst Tool</p>
 This python scrip uses PySide6 as a GUI; Librosa for feature extraction all via a langchain LLM Agent for sorting and analysis.
+<img width="1248" height="774" alt="GIF_FOR_PADA" src="https://github.com/user-attachments/assets/d4bcfc18-4a78-4f4f-bdce-39c612bfb493" />
 
 [![Stars](https://img.shields.io/github/stars/Babalon921/PADA?style=flat-square)](https://github.com/Babalon921/PADA/stargazers) [![Forks](https://img.shields.io/github/forks/Babalon921/PADA?style=flat-square)](https://github.com/Babalon921/PADA/network) [![Issues](https://img.shields.io/github/issues/Babalon921/PADA?style=flat-square)](https://github.com/Babalon921/PADA/issues) [![Watchers](https://img.shields.io/github/watchers/Babalon921/PADA?style=flat-square)](https://github.com/Babalon921/PADA/watchers) [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](https://opensource.org/licenses/MIT)
 
